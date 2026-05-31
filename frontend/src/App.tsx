@@ -39,6 +39,8 @@ function App() {
           error={hotelSearch.error}
           validationError={hotelSearch.validationError}
           hasSearched={hotelSearch.hasSearched}
+          guests={hotelSearch.submittedQuery?.guests ?? Number(searchFilters.filters.guests)}
+          resortId={String(hotelSearch.submittedQuery?.resort ?? searchFilters.filters.resortId)}
         />
       </Box>
     </Box>
