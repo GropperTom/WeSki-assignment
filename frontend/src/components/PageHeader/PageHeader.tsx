@@ -99,9 +99,9 @@ function PageHeader({
           size="medium"
           sx={{ minWidth: 100, height: 40, flexShrink: 0 }}
           onClick={onSearch}
-          disabled={!canSearch || isSearching}
+          disabled={!isSearching && !canSearch}
         >
-          {isSearching ? 'Searching...' : 'Search'}
+          {isSearching ? 'Cancel' : 'Search'}
         </Button>
       </Stack>
     </Paper>

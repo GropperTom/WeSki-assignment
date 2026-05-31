@@ -31,7 +31,7 @@ async function searchProvider(
   console.log(`[hotel-search] Calling provider: ${provider.name}`, query);
 
   try {
-    const result = await provider.search(query);
+    const result = await provider.search(query, signal);
 
     if (signal.aborted) {
       console.log(
@@ -54,7 +54,7 @@ async function searchProvider(
       signal,
     );
   } catch (error) {
-    if (signal.aborted) {
+    if (signal.aborted || (error instanceof Error && error.name === "AbortError")) {
       return;
     }
 

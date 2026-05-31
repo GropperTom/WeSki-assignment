@@ -5,6 +5,7 @@ export const EXTERNAL_API_URL =
 
 export async function fetchExternalAPI(
   body: ExternalAPIRequestBody,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   console.log("[externalAPI] Sending request", body);
 
@@ -12,6 +13,7 @@ export async function fetchExternalAPI(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
