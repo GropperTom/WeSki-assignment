@@ -5,7 +5,7 @@ import type {
 import {
   getCachedExternalAPIGroupSearch,
   setCachedExternalAPIGroupSearch,
-} from "../../cache/externalAPIGroupCache.js";
+} from "../../cache/providers/externalAPI/groupCache.js";
 import type { HotelSearchOptions } from "../types.js";
 import { fetchExternalAPI } from "./client.js";
 import { getHotelDedupKey } from "./hotelKey.js";
