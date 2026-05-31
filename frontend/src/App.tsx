@@ -9,6 +9,11 @@ function App() {
   const hotelSearch = useHotelSearch()
 
   function handleSearch() {
+    if (hotelSearch.isSearching) {
+      hotelSearch.cancelSearch()
+      return
+    }
+
     searchFilters.search()
     hotelSearch.runSearch(searchFilters.filters)
   }

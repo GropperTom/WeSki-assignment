@@ -4,9 +4,12 @@ import { fetchExternalAPI } from "./client.js";
 import { parseExternalAPIRequest } from "./parseRequest.js";
 import { parseExternalAPIResponse } from "./parseResponse.js";
 
-async function searchExternalAPI(query: HotelSearchQuery) {
+async function searchExternalAPI(
+  query: HotelSearchQuery,
+  signal?: AbortSignal,
+) {
   const requestBody = parseExternalAPIRequest(query);
-  const rawResponse = await fetchExternalAPI(requestBody);
+  const rawResponse = await fetchExternalAPI(requestBody, signal);
   return parseExternalAPIResponse(rawResponse);
 }
 
