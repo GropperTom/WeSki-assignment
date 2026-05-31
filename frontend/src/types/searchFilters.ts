@@ -57,3 +57,15 @@ export function filtersToParams(filters: SearchFilters): URLSearchParams {
 
   return params
 }
+
+export function areSearchFiltersComplete(filters: SearchFilters): boolean {
+  const guestsNumber = Number(filters.guests)
+
+  return (
+    validResortIds.has(filters.resortId) &&
+    Number.isInteger(guestsNumber) &&
+    guestsNumber >= 1 &&
+    guestsNumber <= 10 &&
+    filters.period !== null
+  )
+}

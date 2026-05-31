@@ -9,13 +9,33 @@ import {
   Typography,
 } from '@mui/material'
 import { resorts } from '../../data/resorts'
-import { useSearchFilters } from '../../hooks/useSearchFilters'
+import type { DatePeriod } from '../../types/datePeriod'
+import {
+  areSearchFiltersComplete,
+  type SearchFilters,
+} from '../../types/searchFilters'
 import DatePeriodFilter from '../DatePeriodFilter/DatePeriodFilter'
 
 const guestOptions = Array.from({ length: 10 }, (_, index) => index + 1)
 
-function PageHeader() {
-  const { filters, setResortId, setGuests, setPeriod, search } = useSearchFilters()
+type PageHeaderProps = {
+  filters: SearchFilters
+  setResortId: (resortId: string) => void
+  setGuests: (guests: string) => void
+  setPeriod: (period: DatePeriod | null) => void
+  onSearch: () => void
+  isSearching?: boolean
+}
+
+function PageHeader({
+  filters,
+  setResortId,
+  setGuests,
+  setPeriod,
+  onSearch,
+  isSearching = false,
+}: PageHeaderProps) {
+  const canSearch = areSearchFiltersComplete(filters)
 
   return (
     <Paper
@@ -78,9 +98,10 @@ function PageHeader() {
           variant="contained"
           size="medium"
           sx={{ minWidth: 100, height: 40, flexShrink: 0 }}
-          onClick={search}
+          onClick={onSearch}
+          disabled={!canSearch || isSearching}
         >
-          Search
+          {isSearching ? 'Searching...' : 'Search'}
         </Button>
       </Stack>
     </Paper>
