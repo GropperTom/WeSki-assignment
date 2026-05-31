@@ -93,7 +93,7 @@ function HotelCard({ hotel, resortName, guests }: HotelCardProps) {
         </Box>
 
         <Typography variant="body2" color="text.secondary">
-          {resortName}
+          {resortName} · {hotel.beds} {hotel.beds === 1 ? 'bed' : 'beds'}
         </Typography>
 
         <Typography variant="subtitle1" sx={{ mt: 0.5 }}>
