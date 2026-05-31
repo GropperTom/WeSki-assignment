@@ -15,8 +15,12 @@ WeSki-assignment/
 │       ├── schemas/                    # Zod query + stream event schemas
 │       ├── integrations/               # Provider registry and adapters
 │       │   └── externalAPI/            # HotelsSimulator API client + parsing
-│       └── cache/
-│           └── externalAPIGroupCache.ts # In-memory provider response cache
+│       └── cache/                      # Per-provider backend caching (see Caching)
+│           ├── createMemoryCache.ts
+│           ├── withQueryProviderCache.ts
+│           └── providers/
+│               ├── externalAPI/groupCache.ts
+│               └── queryProviderCache.ts
 └── frontend/
     └── src/
         ├── main.tsx                    # MUI theme, React Query, Router
@@ -36,6 +40,65 @@ WeSki-assignment/
 
 **Data flow:** User submits filters → frontend validates with Zod → optional **client cache** hit → otherwise `GET /api/hotels/search/stream` (proxied to the backend) → backend calls each **provider** in parallel → provider may use **server cache** → hotels stream back as SSE `provider_result` events → frontend merges and displays cards.
 
+## Caching
+
+Caching is split into a **frontend session cache** (whole search) and **backend provider caches** (per upstream source). Both use in-memory `Map` stores with a **10-minute TTL** and LRU eviction when full.
+
+### Frontend (`frontend/src/utils/hotelSearchCache.ts`)
+
+After a successful stream, `useHotelSearch` stores the merged result for the current browser session:
+
+| | |
+|---|---|
+| **Key** | `resort:start:end:guests` |
+| **Value** | All hotels (with `provider` tag) + any `provider_error` events |
+| **Max entries** | 20 |
+
+On the next search with the same filters, the hook skips the network call and restores hotels and errors immediately. This cache is independent of which providers ran on the backend.
+
+### Backend — shared store (`backend/src/cache/createMemoryCache.ts`)
+
+Each provider cache is built on `createMemoryCache`, which handles TTL expiry, LRU eviction, and `[cache] BE hit/miss/stored` logging. Provider-specific modules only define **keys** and **when** to read/write.
+
+Providers are registered in `integrations/index.ts` via `registerHotelSearchProvider()`, which picks a strategy from the provider’s search shape:
+
+| Provider shape | Strategy | Module |
+|----------------|----------|--------|
+| One upstream call per user query | **Query cache** — wrap with `withQueryProviderCache` | `cache/providers/queryProviderCache.ts` |
+| Multiple upstream calls per user query | **Custom cache** inside the provider’s `search` | e.g. `cache/providers/externalAPI/groupCache.ts` |
+
+### Backend — query cache (default for new providers)
+
+For providers that issue a single request per search, `withQueryProviderCache` wraps `search()`:
+
+| | |
+|---|---|
+| **Key** | `query:resort:start:end:guests` (scoped by `provider.name`) |
+| **Store** | One `createMemoryCache` instance per provider name |
+| **Max entries** | 100 per provider |
+
+On a hit, cached hotels are returned and streamed once via `onResult` with `fromCache: true`. On a miss, the real `search` runs and the full result is stored when the request is not aborted.
+
+### Backend — externalAPI group cache
+
+`externalAPI` is **not** wrapped with `withQueryProviderCache`. It fans out to HotelsSimulator once per distinct **group size** (derived from `guests`), so caching is inside `integrations/externalAPI/search.ts`:
+
+| | |
+|---|---|
+| **Key** | `group:resort:start:end:groupSize` |
+| **Value** | Hotels matching that `group_size` after parsing |
+| **Max entries** | 200 |
+
+Each parallel group-size request checks the group cache before calling the simulator. Partial cache hits still avoid redundant upstream calls for sizes already fetched. Stream logs show `cache=hit` per chunk when `fromCache` is set on `onResult`.
+
+### Adding a provider
+
+1. Implement `HotelSearchProvider` under `integrations/<name>/`.
+2. Register it in `hotelSearchProviders` through `registerHotelSearchProvider()`.
+3. Choose caching:
+   - **Single request per query** — do nothing extra; the default wrapper applies query cache.
+   - **Multiple requests or unusual keys** — skip the wrapper for that name in `registerHotelSearchProvider`, add a module under `cache/providers/<name>/`, and call it from `search()` (same pattern as `externalAPI`).
+
 ## Tools and libraries
 
 | Area | Technology | Role |
@@ -49,7 +112,7 @@ WeSki-assignment/
 | Streaming | **SSE** (Server-Sent Events) | Backend streams per-provider results; frontend parses `data:` lines |
 | Dev proxy | Vite `server.proxy` | `/api` → `http://localhost:3001`; dedicated SSE rule avoids buffering |
 | Validation | [Zod](https://zod.dev/) | Shared-style schemas on frontend and backend |
-| Caching | In-memory `Map` (FE + BE) | 10-minute TTL; FE caches full search, BE caches external API groups |
+| Caching | In-memory `Map` (FE + BE) | See [Caching](#caching); FE = full search, BE = per-provider query or group cache |
 | Backend | [Express](https://expressjs.com/) 5, `cors`, `tsx` | API server; `npm run dev` uses watch mode |
 | External API | AWS HotelsSimulator | POST JSON search; grouped by `group_size` |
 
