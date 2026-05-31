@@ -1,4 +1,11 @@
-import type { HotelSearchQuery } from "../../schemas/hotelSearchSchema.js";
+import type {
+  HotelSearchQuery,
+  HotelSearchResponse,
+} from "../../schemas/hotelSearchSchema.js";
+import {
+  getCachedExternalAPIGroupSearch,
+  setCachedExternalAPIGroupSearch,
+} from "../../cache/externalAPIGroupCache.js";
 import type { HotelSearchOptions } from "../types.js";
 import { fetchExternalAPI } from "./client.js";
 import { getHotelDedupKey } from "./hotelKey.js";
@@ -7,6 +14,53 @@ import {
   parseExternalAPIRequest,
 } from "./parseRequest.js";
 import { parseExternalAPIResponse } from "./parseResponse.js";
+
+async function fetchGroupSizeHotels(
+  query: HotelSearchQuery,
+  groupSize: number,
+  signal?: AbortSignal,
+): Promise<{ hotels: HotelSearchResponse["hotels"]; fromCache: boolean }> {
+  const cachedHotels = getCachedExternalAPIGroupSearch(
+    query.resort,
+    query.start,
+    query.end,
+    groupSize,
+  );
+
+  if (cachedHotels !== undefined) {
+    console.log(
+      `[externalAPI] Using cached results (group_size=${groupSize})`,
+    );
+    return { hotels: cachedHotels, fromCache: true };
+  }
+
+  console.log(`[externalAPI] Request started (group_size=${groupSize})`);
+
+  const requestBody = parseExternalAPIRequest(query, groupSize);
+  const rawResponse = await fetchExternalAPI(requestBody, signal);
+
+  if (signal?.aborted) {
+    console.log(
+      `[externalAPI] Request finished after abort (group_size=${groupSize})`,
+    );
+    return { hotels: [], fromCache: false };
+  }
+
+  const { hotels } = parseExternalAPIResponse(rawResponse);
+  const matchingHotels = hotels.filter((hotel) => hotel.beds === groupSize);
+
+  if (!signal?.aborted) {
+    setCachedExternalAPIGroupSearch(
+      query.resort,
+      query.start,
+      query.end,
+      groupSize,
+      matchingHotels,
+    );
+  }
+
+  return { hotels: matchingHotels, fromCache: false };
+}
 
 export async function searchExternalAPI(
   query: HotelSearchQuery,
@@ -31,20 +85,18 @@ export async function searchExternalAPI(
         return;
       }
 
-      console.log(`[externalAPI] Request started (group_size=${groupSize})`);
+      console.log(`[externalAPI] Resolving group_size=${groupSize}`);
 
-      const requestBody = parseExternalAPIRequest(query, groupSize);
-      const rawResponse = await fetchExternalAPI(requestBody, signal);
+      const { hotels: matchingHotels, fromCache } = await fetchGroupSizeHotels(
+        query,
+        groupSize,
+        signal,
+      );
 
       if (signal?.aborted) {
-        console.log(
-          `[externalAPI] Request finished after abort (group_size=${groupSize})`,
-        );
         return;
       }
 
-      const { hotels } = parseExternalAPIResponse(rawResponse);
-      const matchingHotels = hotels.filter((hotel) => hotel.beds === groupSize);
       const newHotels = matchingHotels.filter((hotel) => {
         const key = getHotelDedupKey(hotel);
 
@@ -57,12 +109,12 @@ export async function searchExternalAPI(
       });
 
       console.log(
-        `[externalAPI] Request complete (group_size=${groupSize}): ${hotels.length} total, ${matchingHotels.length} with matching beds, ${newHotels.length} new after dedup`,
+        `[externalAPI] Request complete (group_size=${groupSize}, cache=${fromCache ? "hit" : "miss"}): ${matchingHotels.length} matching beds, ${newHotels.length} new after dedup`,
       );
 
       if (newHotels.length > 0) {
         allHotels.push(...newHotels);
-        options?.onResult?.(newHotels, { groupSize });
+        options?.onResult?.(newHotels, { groupSize, fromCache });
       }
     }),
   );

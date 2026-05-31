@@ -36,6 +36,7 @@ async function searchProvider(
 
   try {
     let streamedViaCallback = false;
+    let servedFromCache = false;
 
     const result = await provider.search(query, signal, {
       onResult: (hotels, meta: HotelSearchResultMeta) => {
@@ -44,8 +45,9 @@ async function searchProvider(
         }
 
         streamedViaCallback = true;
+        servedFromCache = meta.fromCache === true;
         console.log(
-          `[hotel-search] Provider ${provider.name} streamed ${hotels.length} hotel(s) (group_size=${meta.groupSize})`,
+          `[hotel-search] Provider ${provider.name} streamed ${hotels.length} hotel(s) (group_size=${meta.groupSize}${servedFromCache ? ", cache=hit" : ", cache=miss"})`,
         );
 
         writeStreamEvent(
