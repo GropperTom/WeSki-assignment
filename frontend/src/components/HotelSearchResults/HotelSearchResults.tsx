@@ -1,5 +1,6 @@
 import { Alert, Box, CircularProgress, Stack, Typography } from '@mui/material'
 import type { HotelResult, ProviderSearchError } from '../../hooks/useHotelSearch'
+import HotelCards from '../HotelCards/HotelCards'
 
 type HotelSearchResultsProps = {
   hotels: HotelResult[]
@@ -9,6 +10,8 @@ type HotelSearchResultsProps = {
   error: string | null
   validationError: string | null
   hasSearched: boolean
+  guests: number
+  resortId: string
 }
 
 function HotelSearchResults({
@@ -19,6 +22,8 @@ function HotelSearchResults({
   error,
   validationError,
   hasSearched,
+  guests,
+  resortId,
 }: HotelSearchResultsProps) {
   if (validationError) {
     return (
@@ -58,20 +63,7 @@ function HotelSearchResults({
       ))}
 
       {hotels.length > 0 && (
-        <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
-          {hotels.map((hotel) => (
-            <Box
-              component="li"
-              key={`${hotel.provider}-${hotel.id}`}
-              sx={{ py: 1, borderBottom: 1, borderColor: 'divider' }}
-            >
-              <Typography>{hotel.name}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {hotel.provider} · {hotel.rating} stars · €{hotel.price}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
+        <HotelCards hotels={hotels} guests={guests} resortId={resortId} />
       )}
 
       {isComplete && hotels.length === 0 && !error && providerErrors.length === 0 && (
