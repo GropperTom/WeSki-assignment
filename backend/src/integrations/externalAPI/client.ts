@@ -7,7 +7,10 @@ export async function fetchExternalAPI(
   body: ExternalAPIRequestBody,
   signal?: AbortSignal,
 ): Promise<unknown> {
-  console.log("[externalAPI] Sending request", body);
+  console.log(
+    `[externalAPI] Sending request (group_size=${body.query.group_size})`,
+    body,
+  );
 
   const response = await fetch(EXTERNAL_API_URL, {
     method: "POST",
@@ -21,7 +24,9 @@ export async function fetchExternalAPI(
   }
 
   const data = await response.json();
-  console.log("[externalAPI] Received response");
+  console.log(
+    `[externalAPI] Received response (group_size=${body.query.group_size})`,
+  );
 
   return data;
 }

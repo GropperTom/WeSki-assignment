@@ -4,6 +4,7 @@ import {
   type HotelSearchProvider,
 } from "../integrations/index.js";
 import type { HotelSearchQuery } from "../schemas/hotelSearchSchema.js";
+import type { HotelSearchResultMeta } from "../integrations/types.js";
 import type { HotelSearchStreamEvent } from "../schemas/hotelSearchStreamSchema.js";
 
 function writeStreamEvent(
@@ -28,10 +29,36 @@ async function searchProvider(
     return;
   }
 
-  console.log(`[hotel-search] Calling provider: ${provider.name}`, query);
+  console.log(
+    `[hotel-search] Calling provider: ${provider.name} (guests=${query.guests}, resort=${query.resort})`,
+    query,
+  );
 
   try {
-    const result = await provider.search(query, signal);
+    let streamedViaCallback = false;
+
+    const result = await provider.search(query, signal, {
+      onResult: (hotels, meta: HotelSearchResultMeta) => {
+        if (signal.aborted || hotels.length === 0) {
+          return;
+        }
+
+        streamedViaCallback = true;
+        console.log(
+          `[hotel-search] Provider ${provider.name} streamed ${hotels.length} hotel(s) (group_size=${meta.groupSize})`,
+        );
+
+        writeStreamEvent(
+          res,
+          {
+            type: "provider_result",
+            provider: provider.name,
+            hotels,
+          },
+          signal,
+        );
+      },
+    });
 
     if (signal.aborted) {
       console.log(
@@ -40,19 +67,21 @@ async function searchProvider(
       return;
     }
 
-    console.log(
-      `[hotel-search] Provider ${provider.name} returned ${result.hotels.length} hotels`,
-    );
+    if (!streamedViaCallback) {
+      console.log(
+        `[hotel-search] Provider ${provider.name} returned ${result.hotels.length} hotels`,
+      );
 
-    writeStreamEvent(
-      res,
-      {
-        type: "provider_result",
-        provider: provider.name,
-        hotels: result.hotels,
-      },
-      signal,
-    );
+      writeStreamEvent(
+        res,
+        {
+          type: "provider_result",
+          provider: provider.name,
+          hotels: result.hotels,
+        },
+        signal,
+      );
+    }
   } catch (error) {
     if (signal.aborted || (error instanceof Error && error.name === "AbortError")) {
       return;

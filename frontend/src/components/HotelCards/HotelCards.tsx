@@ -2,6 +2,7 @@ import { Stack } from '@mui/material'
 import { useMemo } from 'react'
 import { resorts } from '../../data/resorts'
 import type { HotelResult } from '../../hooks/useHotelSearch'
+import { getHotelDedupKey } from '../../utils/mergeHotelResults'
 import HotelCard from '../HotelCard/HotelCard'
 
 type HotelCardsProps = {
@@ -25,7 +26,7 @@ function HotelCards({ hotels, guests, resortId }: HotelCardsProps) {
   return (
     <Stack spacing={2} component="ul" sx={{ m: 0, p: 0, listStyle: 'none' }}>
       {sortedHotels.map((hotel) => (
-        <Stack component="li" key={`${hotel.provider}-${hotel.id}`}>
+        <Stack component="li" key={getHotelDedupKey(hotel)}>
           <HotelCard hotel={hotel} resortName={resortName} guests={guests} />
         </Stack>
       ))}

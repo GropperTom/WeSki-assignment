@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ZodError } from 'zod'
 import { filtersToSearchQuery, streamSearchHotels } from '../api/searchHotels'
+import { mergeHotelResults } from '../utils/mergeHotelResults'
 import type { Hotel } from '../schemas/hotelSearchStreamSchema'
 import type { HotelSearchQuery } from '../schemas/hotelSearchSchema'
 import type { SearchFilters } from '../types/searchFilters'
@@ -59,10 +60,9 @@ export function useHotelSearch() {
               return
             }
 
-            setHotels((current) => [
-              ...current,
-              ...providerHotels.map((hotel) => ({ ...hotel, provider })),
-            ])
+            setHotels((current) =>
+              mergeHotelResults(current, provider, providerHotels),
+            )
           },
           onProviderError: (provider, message) => {
             if (abortController.signal.aborted) {

@@ -1,17 +1,7 @@
-import type { HotelSearchQuery } from "../../schemas/hotelSearchSchema.js";
 import type { HotelSearchProvider } from "../types.js";
-import { fetchExternalAPI } from "./client.js";
 import { parseExternalAPIRequest } from "./parseRequest.js";
 import { parseExternalAPIResponse } from "./parseResponse.js";
-
-async function searchExternalAPI(
-  query: HotelSearchQuery,
-  signal?: AbortSignal,
-) {
-  const requestBody = parseExternalAPIRequest(query);
-  const rawResponse = await fetchExternalAPI(requestBody, signal);
-  return parseExternalAPIResponse(rawResponse);
-}
+import { searchExternalAPI } from "./search.js";
 
 export const externalAPI: HotelSearchProvider = {
   name: "externalAPI",
