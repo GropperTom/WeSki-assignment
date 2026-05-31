@@ -2,6 +2,7 @@ import type { HotelSearchQuery, HotelSearchResponse } from "../schemas/hotelSear
 
 export type HotelSearchResultMeta = {
   groupSize: number;
+  fromCache?: boolean;
 };
 
 export type HotelSearchOptions = {
